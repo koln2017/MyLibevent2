@@ -20,12 +20,14 @@ CBufferEventClient::~CBufferEventClient(void)
 
 int CBufferEventClient::Init()
 {
+#ifdef _WIN32
 	WSADATA wsaData;
 	DWORD dwRet;
 	if ((dwRet =WSAStartup(MAKEWORD(2, 2), &wsaData)) != 0)
 	{
 		return WSAStartup_fail;
 	}
+#endif
 
 	sockaddr_in addr;
 	if (inet_pton(AF_INET, g_param.pIP, &addr.sin_addr) < 1)
@@ -90,9 +92,13 @@ void CBufferEventClient::Stop()
 	event_base_loopexit(m_pBase, NULL);
 }
 
-int CBufferEventClient::Send(void *pSendID, const unsigned char*pBuf, unsigned int nLen)
+int CBufferEventClient::Send(const DATA_PACKAGE_T *dataPackage)
 {
-	return bufferevent_write(m_pBufEvent, pBuf, nLen+1);
+	if (NULL == dataPackage)
+	{
+		return -1;
+	}
+	return bufferevent_write(m_pBufEvent, dataPackage->pData, dataPackage->nLen);
 }
 
 int CBufferEventClient::GetSocketID()
@@ -111,7 +117,9 @@ void CBufferEventClient::ReleaseRes()
 	{
 		event_base_free(m_pBase);
 	}
+#ifdef _WIN32
 	WSACleanup();
+#endif
 }
 
 void CBufferEventClient::Delete(void *pParam)
@@ -134,6 +142,7 @@ void OnReadClient(bufferevent *pBufEvent, void *pParam)
 		data.pSendID = pBufEvent;
 		data.nLen = nLen;
 		data.pData = szMsg;
+		data.nFd =bufferevent_getfd(pBufEvent);
 		g_param.cbFun(TCP_READ_DATA, g_param.pThis, (void*)&data);
 	}
 }

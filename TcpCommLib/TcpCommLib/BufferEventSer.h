@@ -13,7 +13,7 @@ public:
 	virtual int Init();
 	virtual void Start();
 	virtual void Stop();
-	virtual int Send(void *pSendID, const unsigned char*pBuf, unsigned int nLen);
+	virtual int Send(const DATA_PACKAGE_T *dataPackage);
 
 	void SetTcpNoDelay(evutil_socket_t fd);
 	void SetWindowsIOCP();

@@ -38,8 +38,8 @@ enum CBTYPE_EN
 	TCP_READ_DATA,						//数据读取消息
 };
 
-//enType：回调类型，pThis：调用对象指针，pBuf：数据缓存
-typedef void (*ReadCbFun)(CBTYPE_EN enType, void *pThis, void *pBuf);
+//enType：回调类型，pThis：调用对象指针，pData：数据结构
+typedef void (*ReadCbFun)(CBTYPE_EN enType, void *pThis, void *pData);
 
 struct CBFUN_PARAM_T
 {
@@ -51,14 +51,16 @@ struct CBFUN_PARAM_T
 
 struct DATA_PACKAGE_T
 {
-	int nLen;
-	unsigned char *pData;
-	void *pSendID;			//发送数据的ID
+	int nFd;								//SocketID
+	int nLen;							//要求字符小于4096
+	void *pSendID;				//BufferID
+	unsigned char *pData;		//数据
 	DATA_PACKAGE_T()
 	{
+		nFd = -1;
 		nLen = 0;
-		pData = NULL;
 		pSendID = NULL;
+		pData = NULL;
 	}
 };
 
@@ -71,21 +73,19 @@ public:
 	virtual void Start() = 0;
 	virtual void Stop() = 0;
 	/**********************************
-	//pSendID：数据发送ID，服务端必须传入。服务端传入NULL时，将向最后一次连接的客户端发送数据。		
-	//										客户端可默认传入NULL。					
-	//pBuf：需发送的字符串
-	//nLen：字符串大小，要求小于4096
+	//dataPackage：结构体的参数都必须传入
+	//															
 	//返回值：0-success，小于0-fail
 	**********************************/
-	virtual int Send(void *pSendID, const unsigned char*pBuf, unsigned int nLen) = 0;
+	virtual int Send(const DATA_PACKAGE_T *dataPackage) = 0;
 
-	//客户端使用
+	//客户端调用
 	virtual int GetSocketID();
 };
 
 //nType：0-服务端 1-客户端
-DLL_API CTcpCommLibBase *CreateTcpCommLib(int nType, CBFUN_PARAM_T param);
-DLL_API void DeleteTcpCommLib();
+extern "C" DLL_API CTcpCommLibBase *CreateTcpCommLib(int nType, CBFUN_PARAM_T param);
+extern "C" DLL_API void DeleteTcpCommLib();
 
 
 #endif

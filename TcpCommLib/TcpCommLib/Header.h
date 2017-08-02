@@ -8,6 +8,7 @@
 #include <iostream>
 #include <vector>
 #include <process.h> 
+#include <io.h>
 using namespace std;
 
 #include "event2/event.h"
@@ -17,15 +18,16 @@ using namespace std;
 #include "event2/thread.h"
 #include "event2/util.h"
 
-#include <WinSock2.h>
-#include <Windows.h>
-#include <WS2tcpip.h>
+#ifdef _WIN32
+	#include <WinSock2.h>
+	#include <Windows.h>
+	#include <WS2tcpip.h>
+	#define bzero(argc, len)		memset(argc, 0, len)
+#endif
 //#include <signal.h>
-#include <io.h>
 
 #include "TcpCommLibBase.h"
 
-#define bzero(argc, len)		memset(argc, 0, len)
 
 struct BUFFER_INFO_T
 {

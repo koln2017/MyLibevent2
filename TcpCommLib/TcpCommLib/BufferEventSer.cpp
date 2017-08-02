@@ -35,12 +35,14 @@ void CBufferEventSer::SetWindowsIOCP()
 
 int CBufferEventSer::Init()
 {
+#ifdef _WIN32
 	WSADATA wsaData;
 	DWORD dwRet;
 	if ((dwRet =WSAStartup(MAKEWORD(2, 2), &wsaData)) != 0)
 	{
 		return WSAStartup_fail;
 	}
+#endif
 
 	//设置多线程
 #ifdef WIN32
@@ -101,41 +103,40 @@ void CBufferEventSer::Stop()
 	event_base_loopexit(m_pBase, NULL);
 }
 
-int CBufferEventSer::Send(void *pSendID, const unsigned char*pBuf, unsigned int nLen)
+int CBufferEventSer::Send(const DATA_PACKAGE_T *dataPackage)
 {
-	if (NULL == pSendID)
+	if (NULL == dataPackage || NULL == dataPackage->pSendID)
 	{
 		return -1;
 	}
-	return bufferevent_write((bufferevent*)pSendID, pBuf, nLen);
-	return -1;
+	return bufferevent_write((bufferevent*)dataPackage->pSendID, dataPackage->pData, dataPackage->nLen);
 
-	//服务器使用bufferevent_write时，需要使用到bufferevent，所以发送时需要遍历fd，大并发量时需要考虑效率
-	 if (NULL == pSendID)
-	 {
-		 int nSize = m_vecBufferInfo.size();
-		 if (nSize > 0)
-		 {
-			 //没有指定SocketID则给最后连接的Socket客户端发送数据
-			return bufferevent_write(m_vecBufferInfo[nSize-1].pBufvClient, pBuf, nLen);
-			//int nRet = send(m_vecBufferInfo.at(nSize-1).fdClient, (const char*)pBuf, nLen, 0);
-			//if (SOCKET_ERROR == nRet)
-			//{
-			//	return -1;
-			//}
-		 }
-	 }
-	 else
-	 {
-		for (int i = 0; i < (int)m_vecBufferInfo.size(); i++)
-		{
-			if (m_vecBufferInfo[i].pBufvClient == pSendID)
-			{
-				return bufferevent_write(m_vecBufferInfo[i].pBufvClient, pBuf, nLen);
-			}
-		}
-	 }
-	 return -1;
+	////服务器使用bufferevent_write时，需要使用到bufferevent，所以发送时需要遍历fd，大并发量时需要考虑效率
+	// if (NULL == dataPackage->pSendID)
+	// {
+	//	 int nSize = m_vecBufferInfo.size();
+	//	 if (nSize > 0)
+	//	 {
+	//		 //没有指定SocketID则给最后连接的Socket客户端发送数据
+	//		return bufferevent_write(m_vecBufferInfo[nSize-1].pBufvClient, dataPackage->pData, dataPackage->nLen);
+	//		//int nRet = send(m_vecBufferInfo.at(nSize-1).fdClient, (const char*)pBuf, nLen, 0);
+	//		//if (SOCKET_ERROR == nRet)
+	//		//{
+	//		//	return -1;
+	//		//}
+	//	 }
+	// }
+	// else
+	// {
+	//	for (int i = 0; i < (int)m_vecBufferInfo.size(); i++)
+	//	{
+	//		if (m_vecBufferInfo[i].pBufvClient == dataPackage->pSendID)
+	//		{
+	//			return bufferevent_write(m_vecBufferInfo[i].pBufvClient, dataPackage->pData, dataPackage->nLen);
+	//		}
+	//	}
+	// }
+	// return -1;
 }
 
 void CBufferEventSer::ReleaseRes()
@@ -149,7 +150,9 @@ void CBufferEventSer::ReleaseRes()
 	{
 		event_base_free(m_pBase);
 	}
+#ifdef _WIN32
 	WSACleanup();
+#endif
 }
 
 void CBufferEventSer::Delete(void *pParam)
@@ -191,12 +194,13 @@ void OnRead(bufferevent *pBufEvent, void *pParam)
 
 	CBufferEventSer *pDlg = (CBufferEventSer *)pParam;
 	int nLen = bufferevent_read(pBufEvent, szMsg, MAX_READ_MSG_LEN);
+	DATA_PACKAGE_T data;
 	if (nLen > 0)
 	{
-		DATA_PACKAGE_T data;
 		data.pSendID = pBufEvent;
 		data.nLen = nLen;
 		data.pData = szMsg;
+		data.nFd = bufferevent_getfd(pBufEvent);
 		g_param.cbFun(TCP_READ_DATA, g_param.pThis, (void*)&data);
 		//const char *pBuf = (const char*)szMsg;
 		//bufferevent_write(pBufEvent, pBuf, strlen(pBuf)+1);
